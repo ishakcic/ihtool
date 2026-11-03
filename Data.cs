@@ -458,17 +458,34 @@ namespace SistemYonetici
             catch (Exception e) { list.Add(new Item { Name = "(açılamadı)", Desc = e.Message, Risk = "w" }); }
             return list;
         }
+        static readonly string[] LockProcs = { "MsMpEng", "NisSrv", "SecurityHealthService", "SecurityHealthSystray", "smartscreen" };
+        static bool IsDefenderPath(string p) => p.IndexOf("Windows Defender", StringComparison.OrdinalIgnoreCase) >= 0;
+
         static string ForceDelete(Item it)
         {
             string p = it.Id;
             if (string.IsNullOrEmpty(p)) return "Geçersiz öğe.";
             if (Path.GetPathRoot(p) == p) return "Sürücü kökü silinemez.";
             bool dir = it.Kind == "dir";
+            bool defPath = IsDefenderPath(p);
+
+            if (defPath)
+            {
+                // Tamper Protection açıkken Defender kendini korur; önce kapatmayı dene, ardından servisi ve işlemleri durdur.
+                Sys.Ps("Set-MpPreference -DisableRealtimeMonitoring $true", true);
+                Sys.Run("sc.exe", "stop WinDefend", true);
+                foreach (var pr in LockProcs) Sys.Run("taskkill.exe", "/f /im " + pr + ".exe", true);
+            }
+
             Sys.Run("takeown.exe", "/f \"" + p + "\" " + (dir ? "/r /d y" : ""), true);
             Sys.Run("icacls.exe", "\"" + p + "\" /grant *S-1-5-32-544:F " + (dir ? "/t /c /q" : "/c /q"), true);
             var r = dir ? Sys.Run("cmd.exe", "/c rd /s /q \"" + p + "\"", true) : Sys.Run("cmd.exe", "/c del /f /q \"" + p + "\"", true);
             bool still = dir ? Directory.Exists(p) : File.Exists(p);
-            return still ? "Silinemedi (kullanımda olabilir). " + r.o.Trim() : null;
+            if (!still) return null;
+
+            if (defPath)
+                return "Silinemedi. Kurcalamaya Karşı Koruma açık görünüyor: Windows Güvenlik → Virüs ve tehdit koruması → Ayarları yönet → Kurcalamaya Karşı Koruma'yı kapat, sonra tekrar dene.";
+            return "Silinemedi (kullanımda olabilir). " + r.o.Trim();
         }
 
         // ---------- Kategoriler ----------

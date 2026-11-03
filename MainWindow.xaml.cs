@@ -18,16 +18,24 @@ namespace SistemYonetici
         public MainWindow()
         {
             InitializeComponent();
-            Nav.ItemsSource = Data.All.Select(c => c.Title).ToList();
-            Nav.SelectedIndex = 0;
+            for (int i = 0; i < Data.All.Length; i++)
+            {
+                var rb = new RadioButton
+                {
+                    Content = Data.All[i].Title, GroupName = "nav",
+                    Style = (Style)FindResource("NavBtn"), Tag = i, IsChecked = i == 0
+                };
+                rb.Checked += (s, e) => SelectCat((int)((RadioButton)s).Tag);
+                NavPanel.Children.Add(rb);
+            }
+            SelectCat(0);
         }
 
         void Status(string s) => StatusTxt.Text = s;
 
-        void Nav_Changed(object s, SelectionChangedEventArgs e)
+        void SelectCat(int i)
         {
-            if (Nav.SelectedIndex < 0) return;
-            cur = Data.All[Nav.SelectedIndex];
+            cur = Data.All[i];
             TitleTxt.Text = cur.Title;
             Vis(BtnA, cur.A); Vis(BtnB, cur.B); Vis(BtnC, cur.C);
             BtnUp.Visibility = cur.Files ? Visibility.Visible : Visibility.Collapsed;
