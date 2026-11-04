@@ -25,7 +25,10 @@ namespace SistemYonetici
     {
         public string Title, A, B, C;
         public bool Files;
+        public bool Log;
         public Func<Task<List<Item>>> Load;
         public Func<Item, string> DoA, DoB, DoC;
+        // Verilen öğe için A işleminin etkisini (gerçek bağımlılıklar dahil) açıklayan metin döndürür; yoksa null.
+        public Func<Item, string> Impact;
     }
 }

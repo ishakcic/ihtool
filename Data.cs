@@ -241,6 +241,20 @@ namespace SistemYonetici
             Sys.Run("sc.exe", "start \"" + i.Id + "\"", true);
             return null;
         }
+        static string SvcImpact(Item i)
+        {
+            try
+            {
+                using var sc = new ServiceController(i.Id);
+                var dep = sc.DependentServices;
+                if (dep.Length == 0) return "Bu hizmete bağımlı başka hizmet yok. Durdurmak güvenli görünüyor.";
+                var running = dep.Where(d => d.Status == ServiceControllerStatus.Running).Select(d => d.DisplayName).ToList();
+                if (running.Count == 0) return dep.Length + " bağımlı hizmet var ama hiçbiri şu an çalışmıyor.";
+                return "Dikkat: şu an çalışan " + running.Count + " hizmet buna bağımlı ve onlar da duracak: " + string.Join(", ", running);
+            }
+            catch (Exception ex) { return "Bağımlılık bilgisi alınamadı: " + ex.Message; }
+        }
+
         static string SvcDelete(Item i)
         {
             Sys.Run("sc.exe", "stop \"" + i.Id + "\"", true);
@@ -496,7 +510,7 @@ namespace SistemYonetici
             new Cat { Title = "Sistem uygulamaları", A = "Dondur", B = "Çöz", C = "Kaldır",
                 Load = () => Task.Run(SysApps), DoA = i => Freeze(i, true), DoB = i => Freeze(i, false), DoC = RemoveAppx },
             new Cat { Title = "Hizmetler", A = "Devre dışı bırak", B = "Etkinleştir", C = "Sil",
-                Load = () => Task.Run(Services), DoA = SvcOff, DoB = SvcOn, DoC = SvcDelete },
+                Load = () => Task.Run(Services), DoA = SvcOff, DoB = SvcOn, DoC = SvcDelete, Impact = SvcImpact },
             new Cat { Title = "Başlangıç", A = "Dondur", B = "Çöz", C = "Sil",
                 Load = () => Task.Run(Startup), DoA = i => StartMove(i, true), DoB = i => StartMove(i, false), DoC = StartDelete },
             new Cat { Title = "Gizlilik ve reklam", A = "Uygula", B = "Geri al",
@@ -509,6 +523,27 @@ namespace SistemYonetici
                 Load = () => LT(Defender), DoA = i => TA(Defender, i, true), DoB = i => TA(Defender, i, false) },
             new Cat { Title = "Dosya yöneticisi", C = "Zorla sil", Files = true,
                 Load = () => Task.Run(Files), DoC = ForceDelete },
+            new Cat { Title = "Değişiklik günlüğü", A = "Tersini uygula", Log = true,
+                Load = () => Task.Run(LogItems), DoA = LogRevert },
         };
+
+        static List<Item> LogItems()
+        {
+            var list = new List<Item>();
+            for (int i = 0; i < Log.Items.Count; i++)
+            {
+                var e = Log.Items[i];
+                string risk = e.Success ? "g" : "r";
+                string rev = (e.Action == "A" || e.Action == "B") ? "Geri alınabilir." : "Kalıcı — geri alınamaz.";
+                list.Add(new Item
+                {
+                    Id = i.ToString(), Name = e.Time.ToString("dd.MM.yyyy HH:mm") + " — " + e.ItemName,
+                    Risk = risk, Status = e.Preview ? "Önizleme" : (e.Success ? "Başarılı" : "Hata"),
+                    Desc = e.Category + " · " + e.Label + (e.Error != null ? " · " + e.Error : "") + " · " + rev
+                });
+            }
+            return list;
+        }
+        static string LogRevert(Item i) => Log.Revert(int.Parse(i.Id));
     }
 }

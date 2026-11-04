@@ -99,6 +99,8 @@
               </ControlTemplate>
             </ToggleButton.Template>
           </ToggleButton>
+          <Button Content="Güncellemeleri Denetle" Margin="0,8,0,0" Style="{StaticResource Pill}"
+                  Padding="8" FontSize="10" Click="CheckUpdate_Click"/>
         </StackPanel>
       </Border>
 
@@ -124,6 +126,7 @@
         <Button x:Name="BtnUp" Content="↑ Yukarı" Style="{StaticResource Pill}" Click="BtnUp_Click"/>
         <Button Content="Yenile" Style="{StaticResource Pill}" Click="Refresh_Click"/>
         <Button Content="Geri yükleme noktası" Style="{StaticResource Pill}" Click="Restore_Click"/>
+        <CheckBox x:Name="ChkPreview" Content="Önizleme modu (uygulamadan göster)" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold"/>
       </StackPanel>
 
       <Border Grid.Row="2" Background="White" CornerRadius="24">
